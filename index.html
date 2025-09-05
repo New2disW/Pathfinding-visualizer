@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pathfinding Algorithm Visualizer</title>
+    
+    <!-- React and Babel for JSX compilation in the browser -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* General Styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark Gray background */
+            color: #f3f4f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Header and Controls */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #e5e7eb;
+            font-weight: 700;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        button {
+            background-color: #3b82f6; /* Blue */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            font-weight: 500;
+        }
+        
+        button:disabled {
+            background-color: #4b5563;
+            cursor: not-allowed;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #2563eb;
+        }
+        
+        button.gemini-btn {
+            background-color: #9333ea; /* Purple */
+        }
+        button.gemini-btn:hover:not(:disabled) {
+            background-color: #7e22ce;
+        }
+
+        button.reset-btn {
+            background-color: #ef4444; /* Red */
+        }
+        
+        button.reset-btn:hover:not(:disabled) {
+             background-color: #dc2626;
+        }
+
+        select, input[type="text"] {
+            background-color: #374151;
+            color: white;
+            border: 1px solid #4b5563;
+            padding: 9px 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        select {
+             cursor: pointer;
+        }
+
+        .api-key-container {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            max-width: 500px;
+        }
+
+        .api-key-container p {
+            font-size: 14px;
+            color: #9ca3af;
+            margin-top: 8px;
+            margin-bottom: 0;
+        }
+        
+        .api-key-container a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+        
+        .api-key-container a:hover {
+            text-decoration: underline;
+        }
+
+
+        /* Grid Styling */
+        .grid-container {
+            display: grid;
+            /* The grid columns are set dynamically in React */
+            border: 1px solid #374151; /* Gray border */
+        }
+        
+        /* Node Styling */
+        .node {
+            width: 25px;
+            height: 25px;
+            outline: 1px solid #374151; /* Faint grid lines */
+            display: inline-block;
+        }
+
+        /* Node Type Styling */
+        .node-start {
+            background-color: #22c55e; /* Green */
+        }
+
+        .node-end {
+            background-color: #ef4444; /* Red */
+        }
+
+        .node-wall {
+            background-color: #4b5563; /* Darker Gray */
+            animation: wall-animation 0.3s ease-out;
+        }
+        
+        @keyframes wall-animation {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .node-visited {
+            animation: visited-animation 1.5s forwards;
+        }
+
+        @keyframes visited-animation {
+            0% {
+                transform: scale(0.3);
+                background-color: #4f46e5; /* Indigo */
+                border-radius: 100%;
+            }
+            50% {
+                background-color: #818cf8; /* Lighter Indigo */
+            }
+            75% {
+                transform: scale(1.2);
+                background-color: #a5b4fc; /* Even Lighter Indigo */
+            }
+            100% {
+                transform: scale(1);
+                background-color: #c7d2fe; /* Lightest Indigo */
+            }
+        }
+
+        .node-path {
+            animation: path-animation 0.5s forwards;
+        }
+
+        @keyframes path-animation {
+            0% {
+                transform: scale(0.6);
+                background-color: #facc15; /* Yellow */
+            }
+            100% {
+                transform: scale(1);
+                background-color: #facc15; /* Yellow */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const App = () => {
+            // --- CONFIGURATION ---
+            const GRID_ROWS = 20;
+            const GRID_COLS = 45;
+            const START_NODE_ROW = 10;
+            const START_NODE_COL = 5;
+            const END_NODE_ROW = 10;
+            const END_NODE_COL = 39;
+
+            // --- STATE MANAGEMENT ---
+            const [grid, setGrid] = React.useState([]);
+            const [isMousePressed, setIsMousePressed] = React.useState(false);
+            const [isVisualizing, setIsVisualizing] = React.useState(false);
+            const [isGenerating, setIsGenerating] = React.useState(false);
+            const [algorithm, setAlgorithm] = React.useState('bfs');
+            const [apiKey, setApiKey] = React.useState('');
+
+            // --- GRID INITIALIZATION ---
+            React.useEffect(() => {
+                const initialGrid = createInitialGrid();
+                setGrid(initialGrid);
+            }, []);
+            
+            // Helper function to create a single node object.
+            const createNode = (row, col) => {
+                return {
+                    row,
+                    col,
+                    isStart: row === START_NODE_ROW && col === START_NODE_COL,
+                    isEnd: row === END_NODE_ROW && col === END_NODE_COL,
+                    isWall: false,
+                    isVisited: false,
+                    distance: Infinity,
+                    previousNode: null,
+                };
+            };
+            
+            // Creates the 2D array that represents the grid.
+            const createInitialGrid = () => {
+                const grid = [];
+                for (let row = 0; row < GRID_ROWS; row++) {
+                    const currentRow = [];
+                    for (let col = 0; col < GRID_COLS; col++) {
+                        currentRow.push(createNode(row, col));
+                    }
+                    grid.push(currentRow);
+                }
+                return grid;
+            };
+
+            // --- MOUSE EVENT HANDLERS for drawing walls ---
+            const handleMouseDown = (row, col) => {
+                if (isVisualizing || isGenerating) return;
+                const newGrid = getNewGridWithWallToggled(grid, row, col);
+                setGrid(newGrid);
+                setIsMousePressed(true);
+            };
+
+            const handleMouseEnter = (row, col) => {
+                if (!isMousePressed || isVisualizing || isGenerating) return;
+                const newGrid = getNewGridWithWallToggled(grid, row, col);
+                setGrid(newGrid);
+            };
+
+            const handleMouseUp = () => {
+                setIsMousePressed(false);
+            };
+            
+            const getNewGridWithWallToggled = (grid, row, col) => {
+                const newGrid = grid.slice();
+                const node = newGrid[row][col];
+                if (node.isStart || node.isEnd) return newGrid;
+                const newNode = {
+                    ...node,
+                    isWall: !node.isWall,
+                };
+                newGrid[row][col] = newNode;
+                return newGrid;
+            };
+            
+            // --- GEMINI API MAZE GENERATION ---
+            const handleGenerateMaze = async () => {
+                if (isVisualizing || isGenerating || !apiKey) return;
+                
+                setIsGenerating(true);
+                resetGrid();
+
+                const prompt = `
+                    Generate a random maze for a grid of size ${GRID_ROWS}x${GRID_COLS}. 
+                    Represent walls with 'W' and empty paths with ' '. 
+                    The start position is at row ${START_NODE_ROW}, col ${START_NODE_COL}.
+                    The end position is at row ${END_NODE_ROW}, col ${END_NODE_COL}.
+                    Ensure there is always a solvable path from the start to the end.
+                    Do not include any other text, explanations, or markdown formatting. 
+                    Just provide the raw ${GRID_ROWS}x${GRID_COLS} grid of characters.
+                `;
+
+                try {
+                    const mazeText = await callGeminiApi(prompt, apiKey);
+                    if(mazeText) {
+                        const newGrid = getGridFromMazeText(mazeText);
+                        setGrid(newGrid);
+                    }
+                } catch (error) {
+                    console.error("Failed to generate maze:", error);
+                    alert("Failed to generate maze. Check the console for details and ensure your API key is correct.");
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+
+            const getGridFromMazeText = (mazeText) => {
+                const newGrid = createInitialGrid();
+                const rows = mazeText.trim().split('\n');
+                for (let row = 0; row < GRID_ROWS; row++) {
+                    for (let col = 0; col < GRID_COLS; col++) {
+                        if(rows[row] && rows[row][col] === 'W') {
+                            const node = newGrid[row][col];
+                            if (!node.isStart && !node.isEnd) {
+                                node.isWall = true;
+                            }
+                        }
+                    }
+                }
+                return newGrid;
+            };
+
+            async function callGeminiApi(prompt, userApiKey, retries = 3, delay = 1000) {
+                 if (!userApiKey) {
+                     throw new Error("API Key is missing.");
+                 }
+                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${userApiKey}`;
+
+                 const payload = {
+                     contents: [{ parts: [{ text: prompt }] }],
+                 };
+
+                 for (let i = 0; i < retries; i++) {
+                     try {
+                         const response = await fetch(apiUrl, {
+                             method: 'POST',
+                             headers: { 'Content-Type': 'application/json' },
+                             body: JSON.stringify(payload)
+                         });
+
+                         if (!response.ok) {
+                             throw new Error(`API request failed with status ${response.status}`);
+                         }
+
+                         const result = await response.json();
+                         const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                         if (text) {
+                             return text;
+                         } else {
+                            throw new Error("Invalid response structure from API or content blocked.");
+                         }
+                     } catch (error) {
+                         console.error(`Attempt ${i + 1} failed. Retrying in ${delay}ms...`, error);
+                         if (i === retries - 1) throw error;
+                         await new Promise(res => setTimeout(res, delay));
+                         delay *= 2; // Exponential backoff
+                     }
+                 }
+                 return null;
+            }
+
+
+            // --- VISUALIZATION LOGIC ---
+            const visualizeAlgorithm = () => {
+                if (isVisualizing || isGenerating) return;
+                setIsVisualizing(true);
+                clearPath();
+
+                const startNode = grid[START_NODE_ROW][START_NODE_COL];
+                const endNode = grid[END_NODE_ROW][END_NODE_COL];
+                
+                let visitedNodesInOrder, nodesInShortestPathOrder;
+
+                switch (algorithm) {
+                    case 'bfs':
+                        ({ visitedNodesInOrder, nodesInShortestPathOrder } = bfs(grid, startNode, endNode));
+                        break;
+                    case 'dfs':
+                        ({ visitedNodesInOrder, nodesInShortestPathOrder } = dfs(grid, startNode, endNode));
+                        break;
+                    case 'dijkstra':
+                        ({ visitedNodesInOrder, nodesInShortestPathOrder } = dijkstra(grid, startNode, endNode));
+                        break;
+                    default:
+                        // Should not happen
+                        return;
+                }
+                
+                animateAlgorithm(visitedNodesInOrder, nodesInShortestPathOrder);
+            };
+            
+            const animateAlgorithm = (visitedNodesInOrder, nodesInShortestPathOrder) => {
+                for (let i = 0; i <= visitedNodesInOrder.length; i++) {
+                    if (i === visitedNodesInOrder.length) {
+                        setTimeout(() => {
+                            animateShortestPath(nodesInShortestPathOrder);
+                        }, 10 * i);
+                        return;
+                    }
+                    setTimeout(() => {
+                        const node = visitedNodesInOrder[i];
+                        if (document.getElementById(`node-${node.row}-${node.col}`)) {
+                            document.getElementById(`node-${node.row}-${node.col}`).className = 'node node-visited';
+                        }
+                    }, 10 * i);
+                }
+            };
+            
+            const animateShortestPath = (nodesInShortestPathOrder) => {
+                for (let i = 0; i < nodesInShortestPathOrder.length; i++) {
+                    setTimeout(() => {
+                        const node = nodesInShortestPathOrder[i];
+                        if (document.getElementById(`node-${node.row}-${node.col}`)) {
+                            document.getElementById(`node-${node.row}-${node.col}`).className = 'node node-path';
+                        }
+                    }, 50 * i);
+                }
+                setTimeout(() => setIsVisualizing(false), 50 * nodesInShortestPathOrder.length);
+            };
+
+            // --- BOARD CLEARING ---
+            const resetGrid = () => {
+                if (isVisualizing || isGenerating) return;
+                const initialGrid = createInitialGrid();
+                setGrid(initialGrid);
+                clearAllVisualizations();
+            };
+
+            const clearPath = () => {
+                const newGrid = grid.map(row => row.map(node => {
+                    const newNode = {...node, 
+                        isVisited: false, 
+                        distance: Infinity, 
+                        previousNode: null,
+                    };
+                    return newNode;
+                }));
+                setGrid(newGrid);
+                clearAllVisualizations();
+            }
+
+            const clearAllVisualizations = () => {
+                 for (let row = 0; row < GRID_ROWS; row++) {
+                    for (let col = 0; col < GRID_COLS; col++) {
+                        const node = grid[row][col];
+                        if (!node.isStart && !node.isEnd && !node.isWall) {
+                             document.getElementById(`node-${row}-${col}`).className = 'node';
+                        }
+                    }
+                }
+            }
+            
+            // --- JSX RENDERING ---
+            return (
+                <>
+                    <div className="header">
+                        <h1>Pathfinding Algorithm Visualizer</h1>
+                        <p>Draw walls, generate a maze with AI, and visualize the path!</p>
+                    </div>
+
+                    <div className="api-key-container">
+                        <input
+                            type="text"
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            placeholder="Enter your Gemini API Key here"
+                            disabled={isGenerating || isVisualizing}
+                        />
+                        <p>
+                            To use "Generate Maze", get a free Google AI API key from 
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer"> Google AI Studio</a>.
+                        </p>
+                    </div>
+
+                    <div className="controls">
+                        <select onChange={(e) => setAlgorithm(e.target.value)} value={algorithm} disabled={isVisualizing || isGenerating}>
+                            <option value="bfs">Breadth-First Search</option>
+                            <option value="dfs">Depth-First Search</option>
+                            <option value="dijkstra">Dijkstra's Algorithm</option>
+                        </select>
+                        <button onClick={visualizeAlgorithm} disabled={isVisualizing || isGenerating}>
+                            {isVisualizing ? "Visualizing..." : `Visualize ${algorithm.toUpperCase()}`}
+                        </button>
+                        <button className="gemini-btn" onClick={handleGenerateMaze} disabled={isVisualizing || isGenerating || !apiKey}>
+                           {isGenerating ? "Generating..." : "✨ Generate Maze"}
+                        </button>
+                        <button className="reset-btn" onClick={resetGrid} disabled={isVisualizing || isGenerating}>
+                            Clear Board & Walls
+                        </button>
+                    </div>
+                    <div 
+                        className="grid-container" 
+                        style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 25px)` }}
+                        onMouseLeave={handleMouseUp} // Stop drawing if mouse leaves the grid
+                    >
+                        {grid.map((row, rowIndex) => (
+                            row.map((node, nodeIndex) => {
+                                const { row, col, isStart, isEnd, isWall } = node;
+                                const extraClassName = isEnd ? 'node-end' : isStart ? 'node-start' : isWall ? 'node-wall' : '';
+                                
+                                return (
+                                    <div
+                                        key={`${rowIndex}-${nodeIndex}`}
+                                        id={`node-${row}-${col}`}
+                                        className={`node ${extraClassName}`}
+                                        onMouseDown={() => handleMouseDown(row, col)}
+                                        onMouseEnter={() => handleMouseEnter(row, col)}
+                                        onMouseUp={handleMouseUp}
+                                    ></div>
+                                );
+                            })
+                        ))}
+                    </div>
+                </>
+            );
+        };
+        
+        // --- ALGORITHMS ---
+        function bfs(grid, startNode, endNode) {
+            const visitedNodesInOrder = [];
+            const queue = [startNode];
+            startNode.isVisited = true;
+
+            while (queue.length > 0) {
+                const currentNode = queue.shift();
+                
+                visitedNodesInOrder.push(currentNode);
+                
+                if (currentNode === endNode) {
+                    const nodesInShortestPathOrder = getNodesInShortestPathOrder(endNode);
+                    return { visitedNodesInOrder, nodesInShortestPathOrder };
+                }
+
+                const neighbors = getUnvisitedNeighbors(currentNode, grid);
+                for (const neighbor of neighbors) {
+                    neighbor.isVisited = true;
+                    neighbor.previousNode = currentNode;
+                    queue.push(neighbor);
+                }
+            }
+            
+            return { visitedNodesInOrder, nodesInShortestPathOrder: [] };
+        }
+
+        function dfs(grid, startNode, endNode) {
+            const visitedNodesInOrder = [];
+            const stack = [startNode];
+
+            while (stack.length > 0) {
+                const currentNode = stack.pop();
+
+                if (currentNode.isVisited || currentNode.isWall) continue;
+
+                currentNode.isVisited = true;
+                visitedNodesInOrder.push(currentNode);
+
+                if (currentNode === endNode) {
+                    return {
+                        visitedNodesInOrder,
+                        nodesInShortestPathOrder: getNodesInShortestPathOrder(endNode),
+                    };
+                }
+                
+                const neighbors = getNeighborsForTraversal(currentNode, grid).reverse();
+                for (const neighbor of neighbors) {
+                    neighbor.previousNode = currentNode;
+                    stack.push(neighbor);
+                }
+            }
+            return { visitedNodesInOrder, nodesInShortestPathOrder: [] };
+        }
+
+        function dijkstra(grid, startNode, endNode) {
+            const visitedNodesInOrder = [];
+            startNode.distance = 0;
+            const unvisitedNodes = getAllNodes(grid);
+
+            while (!!unvisitedNodes.length) {
+                sortNodesByDistance(unvisitedNodes);
+                const closestNode = unvisitedNodes.shift();
+
+                if (closestNode.isWall) continue;
+
+                if (closestNode.distance === Infinity) {
+                    const nodesInShortestPathOrder = getNodesInShortestPathOrder(endNode);
+                    return { visitedNodesInOrder, nodesInShortestPathOrder };
+                }
+
+                closestNode.isVisited = true;
+                visitedNodesInOrder.push(closestNode);
+
+                if (closestNode === endNode) {
+                    const nodesInShortestPathOrder = getNodesInShortestPathOrder(endNode);
+                    return { visitedNodesInOrder, nodesInShortestPathOrder };
+                }
+                
+                updateUnvisitedNeighbors(closestNode, grid);
+            }
+        }
+        
+        function sortNodesByDistance(unvisitedNodes) {
+            unvisitedNodes.sort((nodeA, nodeB) => nodeA.distance - nodeB.distance);
+        }
+        
+        function updateUnvisitedNeighbors(node, grid) {
+            const unvisitedNeighbors = getUnvisitedNeighbors(node, grid);
+            for (const neighbor of unvisitedNeighbors) {
+                neighbor.distance = node.distance + 1;
+                neighbor.previousNode = node;
+            }
+        }
+        
+        function getAllNodes(grid) {
+            const nodes = [];
+            for (const row of grid) {
+                for (const node of row) {
+                    nodes.push(node);
+                }
+            }
+            return nodes;
+        }
+
+        function getNeighborsForTraversal(node, grid) {
+            const neighbors = [];
+            const { col, row } = node;
+            if (row > 0) neighbors.push(grid[row - 1][col]);
+            if (col < grid[0].length - 1) neighbors.push(grid[row][col + 1]);
+            if (row < grid.length - 1) neighbors.push(grid[row + 1][col]);
+            if (col > 0) neighbors.push(grid[row][col - 1]);
+            return neighbors;
+        }
+
+
+        function getUnvisitedNeighbors(node, grid) {
+            const allNeighbors = getNeighborsForTraversal(node, grid);
+            return allNeighbors.filter(neighbor => !neighbor.isVisited && !neighbor.isWall);
+        }
+        
+        function getNodesInShortestPathOrder(endNode) {
+            const nodesInShortestPathOrder = [];
+            let currentNode = endNode;
+            while (currentNode !== null) {
+                nodesInShortestPathOrder.unshift(currentNode);
+                currentNode = currentNode.previousNode;
+            }
+            return nodesInShortestPathOrder;
+        }
+
+
+        // --- RENDER THE APP ---
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
+
