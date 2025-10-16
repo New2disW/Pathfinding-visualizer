@@ -3,23 +3,40 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pathfinding Algorithm Visualizer</title>
+    <title>Advanced Pathfinding Visualizer</title>
     
-    <!-- React and Babel for JSX compilation in the browser -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
+        :root {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --bg-tertiary: #374151;
+            --border-color: #4b5563;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-blue: #3b82f6;
+            --accent-blue-hover: #2563eb;
+            --accent-red: #ef4444;
+            --accent-red-hover: #dc2626;
+            --node-start: #10b981;
+            --node-end: #ef4444;
+            --node-wall: #4b5563;
+            --node-weight: #8b5cf6;
+            --node-path: #f59e0b;
+        }
+
         /* General Styling */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #111827; /* Dark Gray background */
-            color: #f3f4f6;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
             margin: 0;
             padding: 20px;
             display: flex;
@@ -27,180 +44,115 @@
             align-items: center;
         }
 
-        /* Header and Controls */
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+        /* --- Header --- */
+        .header { text-align: center; margin-bottom: 24px; }
+        .header h1 { font-size: 2.25rem; font-weight: 700; margin: 0; }
+        .header p { color: var(--text-secondary); margin-top: 8px; font-size: 1rem; }
 
-        h1 {
-            color: #e5e7eb;
-            font-weight: 700;
-        }
-
-        .controls {
+        /* --- Main Control Bar --- */
+        .control-bar {
+            background-color: var(--bg-secondary);
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
             display: flex;
-            gap: 12px;
-            margin-bottom: 20px;
             flex-wrap: wrap;
             justify-content: center;
             align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
         }
 
-        button {
-            background-color: #3b82f6; /* Blue */
-            color: white;
-            border: none;
-            padding: 10px 20px;
+        .control-group { display: flex; align-items: center; gap: 8px; }
+        .control-group label { font-weight: 500; color: var(--text-secondary); font-size: 0.875rem; }
+
+        .button, select {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 0.95rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s ease-in-out;
-            font-weight: 500;
+            transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .button:hover:not(:disabled) { background-color: #4b5563; }
+        .button:disabled { background-color: #4b5563; color: #9ca3af; cursor: not-allowed; }
+        .button.primary { background-color: var(--accent-blue); border-color: var(--accent-blue); }
+        .button.primary:hover:not(:disabled) { background-color: var(--accent-blue-hover); }
+        .button.secondary-red { background-color: var(--accent-red); border-color: var(--accent-red); }
+        .button.secondary-red:hover:not(:disabled) { background-color: var(--accent-red-hover); }
+        .icon { width: 18px; height: 18px; }
+
+        /* Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-tertiary); transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-blue); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* --- Main Content Area (Grid + Sidebar) --- */
+        .main-content {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
         }
         
-        button:disabled {
-            background-color: #4b5563;
-            cursor: not-allowed;
+        @media (max-width: 1450px) { /* Stack on smaller screens */
+            .main-content {
+                flex-direction: column;
+                align-items: center;
+            }
+            .right-sidebar {
+                flex-direction: row;
+                width: 100%;
+                justify-content: center;
+            }
+            .right-sidebar .stat {
+                flex-grow: 1;
+            }
         }
 
-        button:hover:not(:disabled) {
-            background-color: #2563eb;
-        }
-        
-        button.gemini-btn {
-            background-color: #9333ea; /* Purple */
-        }
-        button.gemini-btn:hover:not(:disabled) {
-            background-color: #7e22ce;
-        }
-
-        button.reset-btn {
-            background-color: #ef4444; /* Red */
-        }
-        
-        button.reset-btn:hover:not(:disabled) {
-             background-color: #dc2626;
-        }
-
-        select, input[type="text"] {
-            background-color: #374151;
-            color: white;
-            border: 1px solid #4b5563;
-            padding: 9px 15px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 500;
-        }
-        
-        select {
-             cursor: pointer;
-        }
-
-        .api-key-container {
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 15px;
-            border-radius: 8px;
-            background-color: #1f2937;
-            border: 1px solid #374151;
-            max-width: 500px;
-        }
-
-        .api-key-container p {
-            font-size: 14px;
-            color: #9ca3af;
-            margin-top: 8px;
-            margin-bottom: 0;
-        }
-        
-        .api-key-container a {
-            color: #60a5fa;
-            text-decoration: none;
-        }
-        
-        .api-key-container a:hover {
-            text-decoration: underline;
-        }
-
-
-        /* Grid Styling */
+        /* --- Grid & Nodes --- */
         .grid-container {
             display: grid;
-            /* The grid columns are set dynamically in React */
-            border: 1px solid #374151; /* Gray border */
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
-        
-        /* Node Styling */
-        .node {
-            width: 25px;
-            height: 25px;
-            outline: 1px solid #374151; /* Faint grid lines */
-            display: inline-block;
-        }
+        .node { width: 25px; height: 25px; outline: 1px solid #37415130; transition: background-color 0.3s ease, transform 0.2s ease; }
+        .node-start { background-color: var(--node-start); cursor: grab; }
+        .node-end { background-color: var(--node-end); cursor: grab; }
+        .node-wall { background-color: var(--node-wall); animation: pop-in 0.2s ease-out; border-radius: 2px; }
+        .node-weight { background-color: var(--bg-primary); animation: pop-in 0.2s ease-out; display: flex; justify-content: center; align-items: center; }
+        .node-weight svg { fill: var(--node-weight); width: 70%; height: 70%; }
+        @keyframes pop-in { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .node-visited { animation: visited-animation 1.5s forwards; }
+        @keyframes visited-animation { 0% { transform: scale(0.3); background-color: #3b82f640; border-radius: 100%; } 50% { background-color: #3b82f680; } 100% { transform: scale(1); background-color: #3b82f6bf; border-radius: 0; } }
+        .node-path { animation: path-animation 0.5s forwards; }
+        @keyframes path-animation { 0% { transform: scale(0.6); background-color: var(--node-path); } 100% { transform: scale(1); background-color: var(--node-path); } }
 
-        /* Node Type Styling */
-        .node-start {
-            background-color: #22c55e; /* Green */
+        /* --- Right Sidebar & Stats --- */
+        .right-sidebar {
+            width: 180px; /* Fixed width for the sidebar */
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: opacity 0.3s ease;
         }
-
-        .node-end {
-            background-color: #ef4444; /* Red */
+        .stat {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
         }
-
-        .node-wall {
-            background-color: #4b5563; /* Darker Gray */
-            animation: wall-animation 0.3s ease-out;
-        }
-        
-        @keyframes wall-animation {
-            from {
-                transform: scale(0.5);
-                opacity: 0;
-            }
-            to {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        .node-visited {
-            animation: visited-animation 1.5s forwards;
-        }
-
-        @keyframes visited-animation {
-            0% {
-                transform: scale(0.3);
-                background-color: #4f46e5; /* Indigo */
-                border-radius: 100%;
-            }
-            50% {
-                background-color: #818cf8; /* Lighter Indigo */
-            }
-            75% {
-                transform: scale(1.2);
-                background-color: #a5b4fc; /* Even Lighter Indigo */
-            }
-            100% {
-                transform: scale(1);
-                background-color: #c7d2fe; /* Lightest Indigo */
-            }
-        }
-
-        .node-path {
-            animation: path-animation 0.5s forwards;
-        }
-
-        @keyframes path-animation {
-            0% {
-                transform: scale(0.6);
-                background-color: #facc15; /* Yellow */
-            }
-            100% {
-                transform: scale(1);
-                background-color: #facc15; /* Yellow */
-            }
-        }
+        .stat-value { font-size: 1.75rem; font-weight: 700; margin-bottom: 4px; }
+        .stat-label { font-size: 0.875rem; color: var(--text-secondary); }
     </style>
 </head>
 <body>
@@ -208,465 +160,272 @@
 
     <script type="text/babel">
         const App = () => {
-            // --- CONFIGURATION ---
-            const GRID_ROWS = 20;
+            const GRID_ROWS = 21;
             const GRID_COLS = 45;
-            const START_NODE_ROW = 10;
-            const START_NODE_COL = 5;
-            const END_NODE_ROW = 10;
-            const END_NODE_COL = 39;
+            const DEFAULT_START_NODE = { row: 10, col: 8 };
+            const DEFAULT_END_NODE = { row: 10, col: 36 };
+            const WEIGHT_COST = 15;
 
-            // --- STATE MANAGEMENT ---
+            // --- SVG ICONS ---
+            const WallIcon = () => <svg className="icon" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm2-1a1 1 0 00-1 1v2h14V5a1 1 0 00-1-1H5zM4 9v2h2V9H4zm4 0v2h2V9H8zm4 0v2h2V9h-2zm4 0v2h2V9h-2zM4 13v2h2v-2H4zm4 0v2h2v-2H8zm4 0v2h2v-2h-2z" clipRule="evenodd" /></svg>;
+            const WeightIcon = () => <svg className="icon" viewBox="0 0 20 20" fill="currentColor"><path d="M5.5 16a3.5 3.5 0 01-3.5-3.5V2.5a.5.5 0 011 0v10A2.5 2.5 0 005.5 15h9a.5.5 0 010 1h-9z" /><path d="M15.146 5.354a.5.5 0 010 .708l-5 5a.5.5 0 01-.708 0l-2-2a.5.5 0 01.708-.708L9.5 9.793l4.646-4.647a.5.5 0 01.708 0z" /></svg>;
+            const MazeIcon = () => <svg className="icon" viewBox="0 0 20 20" fill="currentColor"><path d="M3.25 4.25a.75.75 0 01.75-.75h.5a.75.75 0 01.75.75v.5c0 .414.336.75.75.75h2.5a.75.75 0 01.75.75v2.5a.75.75 0 01-.75.75h-2.5a.75.75 0 01-.75-.75v-2.5a.75.75 0 01-.75-.75h-.5a.75.75 0 01-.75-.75v-.5zM4 15.25a.75.75 0 00.75.75h.5a.75.75 0 00.75-.75v-.5c0-.414.336-.75.75-.75h2.5a.75.75 0 00.75-.75v-2.5a.75.75 0 00-.75-.75h-2.5a.75.75 0 00-.75.75v2.5a.75.75 0 00.75.75h.5a.75.75 0 00.75.75v.5a.75.75 0 00-.75.75H4a.75.75 0 00-.75.75v-.5zM15.25 4a.75.75 0 00.75.75v.5c0 .414.336.75.75.75h2.5a.75.75 0 00.75-.75v-2.5a.75.75 0 00-.75-.75h-2.5a.75.75 0 00-.75.75v2.5a.75.75 0 00.75.75h.5a.75.75 0 00.75-.75v-.5a.75.75 0 00-.75-.75h-.5a.75.75 0 00-.75.75z" /><path fillRule="evenodd" d="M2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10zM10.75 2a.75.75 0 01.75.75v14.5a.75.75 0 01-1.5 0V2.75A.75.75 0 0110.75 2z" clipRule="evenodd" /></svg>;
+            const PlayIcon = () => <svg className="icon" viewBox="0 0 20 20" fill="currentColor"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" /></svg>;
+            
             const [grid, setGrid] = React.useState([]);
+            const [startNode, setStartNode] = React.useState(DEFAULT_START_NODE);
+            const [endNode, setEndNode] = React.useState(DEFAULT_END_NODE);
             const [isMousePressed, setIsMousePressed] = React.useState(false);
+            const [isMovingStart, setIsMovingStart] = React.useState(false);
+            const [isMovingEnd, setIsMovingEnd] = React.useState(false);
             const [isVisualizing, setIsVisualizing] = React.useState(false);
-            const [isGenerating, setIsGenerating] = React.useState(false);
-            const [algorithm, setAlgorithm] = React.useState('bfs');
-            const [apiKey, setApiKey] = React.useState('');
+            const [algorithm, setAlgorithm] = React.useState('astar');
+            const [drawMode, setDrawMode] = React.useState('wall');
+            const [allowDiagonals, setAllowDiagonals] = React.useState(true);
+            const [stats, setStats] = React.useState({ pathCost: 0, visitedCount: 0 });
 
-            // --- GRID INITIALIZATION ---
-            React.useEffect(() => {
-                const initialGrid = createInitialGrid();
-                setGrid(initialGrid);
-            }, []);
+            React.useEffect(() => resetGrid(), []);
             
-            // Helper function to create a single node object.
-            const createNode = (row, col) => {
-                return {
-                    row,
-                    col,
-                    isStart: row === START_NODE_ROW && col === START_NODE_COL,
-                    isEnd: row === END_NODE_ROW && col === END_NODE_COL,
-                    isWall: false,
-                    isVisited: false,
-                    distance: Infinity,
-                    previousNode: null,
-                };
-            };
+            const createNode = (r, c, start, end) => ({ row: r, col: c, isStart: r === start.row && c === start.col, isEnd: r === end.row && c === end.col, isWall: false, isVisited: false, distance: Infinity, fCost: Infinity, previousNode: null, weight: 1 });
             
-            // Creates the 2D array that represents the grid.
-            const createInitialGrid = () => {
-                const grid = [];
-                for (let row = 0; row < GRID_ROWS; row++) {
-                    const currentRow = [];
-                    for (let col = 0; col < GRID_COLS; col++) {
-                        currentRow.push(createNode(row, col));
-                    }
-                    grid.push(currentRow);
-                }
-                return grid;
-            };
+            const createInitialGrid = (start, end) => Array.from({ length: GRID_ROWS }, (_, r) => Array.from({ length: GRID_COLS }, (_, c) => createNode(r, c, start, end)));
 
-            // --- MOUSE EVENT HANDLERS for drawing walls ---
             const handleMouseDown = (row, col) => {
-                if (isVisualizing || isGenerating) return;
-                const newGrid = getNewGridWithWallToggled(grid, row, col);
-                setGrid(newGrid);
-                setIsMousePressed(true);
+                if (isVisualizing) return;
+                const node = grid[row][col];
+                if (node.isStart) setIsMovingStart(true);
+                else if (node.isEnd) setIsMovingEnd(true);
+                else { setGrid(getNewGridWithToggledNode(grid, row, col)); setIsMousePressed(true); }
             };
 
             const handleMouseEnter = (row, col) => {
-                if (!isMousePressed || isVisualizing || isGenerating) return;
-                const newGrid = getNewGridWithWallToggled(grid, row, col);
+                if (isVisualizing) return;
+                if (isMovingStart) moveNode(row, col, 'start');
+                else if (isMovingEnd) moveNode(row, col, 'end');
+                else if (isMousePressed) { setGrid(getNewGridWithToggledNode(grid, row, col)); }
+            };
+
+            const handleMouseUp = () => { setIsMousePressed(false); setIsMovingStart(false); setIsMovingEnd(false); };
+
+            const moveNode = (row, col, type) => {
+                const newGrid = grid.slice();
+                const target = newGrid[row][col];
+                if (target.isWall || (type === 'start' && target.isEnd) || (type === 'end' && target.isStart)) return;
+
+                if (type === 'start') {
+                    newGrid[startNode.row][startNode.col].isStart = false;
+                    target.isStart = true;
+                    setStartNode({ row, col });
+                } else {
+                    newGrid[endNode.row][endNode.col].isEnd = false;
+                    target.isEnd = true;
+                    setEndNode({ row, col });
+                }
                 setGrid(newGrid);
             };
 
-            const handleMouseUp = () => {
-                setIsMousePressed(false);
-            };
-            
-            const getNewGridWithWallToggled = (grid, row, col) => {
-                const newGrid = grid.slice();
+            const getNewGridWithToggledNode = (grid, row, col) => {
+                const newGrid = grid.map(r => r.slice());
                 const node = newGrid[row][col];
-                if (node.isStart || node.isEnd) return newGrid;
-                const newNode = {
-                    ...node,
-                    isWall: !node.isWall,
-                };
-                newGrid[row][col] = newNode;
+                if (drawMode === 'wall') {
+                    node.isWall = !node.isWall; node.weight = 1;
+                } else {
+                    node.weight = node.weight === 1 ? WEIGHT_COST : 1; node.isWall = false;
+                }
                 return newGrid;
             };
             
-            // --- GEMINI API MAZE GENERATION ---
-            const handleGenerateMaze = async () => {
-                if (isVisualizing || isGenerating || !apiKey) return;
-                
-                setIsGenerating(true);
-                resetGrid();
-
-                const prompt = `
-                    Generate a random maze for a grid of size ${GRID_ROWS}x${GRID_COLS}. 
-                    Represent walls with 'W' and empty paths with ' '. 
-                    The start position is at row ${START_NODE_ROW}, col ${START_NODE_COL}.
-                    The end position is at row ${END_NODE_ROW}, col ${END_NODE_COL}.
-                    Ensure there is always a solvable path from the start to the end.
-                    Do not include any other text, explanations, or markdown formatting. 
-                    Just provide the raw ${GRID_ROWS}x${GRID_COLS} grid of characters.
-                `;
-
-                try {
-                    const mazeText = await callGeminiApi(prompt, apiKey);
-                    if(mazeText) {
-                        const newGrid = getGridFromMazeText(mazeText);
-                        setGrid(newGrid);
-                    }
-                } catch (error) {
-                    console.error("Failed to generate maze:", error);
-                    alert("Failed to generate maze. Check the console for details and ensure your API key is correct.");
-                } finally {
-                    setIsGenerating(false);
-                }
-            };
-
-            const getGridFromMazeText = (mazeText) => {
-                const newGrid = createInitialGrid();
-                const rows = mazeText.trim().split('\n');
-                for (let row = 0; row < GRID_ROWS; row++) {
-                    for (let col = 0; col < GRID_COLS; col++) {
-                        if(rows[row] && rows[row][col] === 'W') {
-                            const node = newGrid[row][col];
-                            if (!node.isStart && !node.isEnd) {
-                                node.isWall = true;
-                            }
-                        }
-                    }
-                }
-                return newGrid;
-            };
-
-            async function callGeminiApi(prompt, userApiKey, retries = 3, delay = 1000) {
-                 if (!userApiKey) {
-                     throw new Error("API Key is missing.");
-                 }
-                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${userApiKey}`;
-
-                 const payload = {
-                     contents: [{ parts: [{ text: prompt }] }],
-                 };
-
-                 for (let i = 0; i < retries; i++) {
-                     try {
-                         const response = await fetch(apiUrl, {
-                             method: 'POST',
-                             headers: { 'Content-Type': 'application/json' },
-                             body: JSON.stringify(payload)
-                         });
-
-                         if (!response.ok) {
-                             throw new Error(`API request failed with status ${response.status}`);
-                         }
-
-                         const result = await response.json();
-                         const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                         if (text) {
-                             return text;
-                         } else {
-                            throw new Error("Invalid response structure from API or content blocked.");
-                         }
-                     } catch (error) {
-                         console.error(`Attempt ${i + 1} failed. Retrying in ${delay}ms...`, error);
-                         if (i === retries - 1) throw error;
-                         await new Promise(res => setTimeout(res, delay));
-                         delay *= 2; // Exponential backoff
-                     }
-                 }
-                 return null;
-            }
-
-
-            // --- VISUALIZATION LOGIC ---
             const visualizeAlgorithm = () => {
-                if (isVisualizing || isGenerating) return;
+                if (isVisualizing) return;
                 setIsVisualizing(true);
-                clearPath();
-
-                const startNode = grid[START_NODE_ROW][START_NODE_COL];
-                const endNode = grid[END_NODE_ROW][END_NODE_COL];
+                clearPath(false); // Clear path but keep stats visible
+                setStats({ pathCost: '...', visitedCount: '...' });
                 
-                let visitedNodesInOrder, nodesInShortestPathOrder;
-
-                switch (algorithm) {
-                    case 'bfs':
-                        ({ visitedNodesInOrder, nodesInShortestPathOrder } = bfs(grid, startNode, endNode));
-                        break;
-                    case 'dfs':
-                        ({ visitedNodesInOrder, nodesInShortestPathOrder } = dfs(grid, startNode, endNode));
-                        break;
-                    case 'dijkstra':
-                        ({ visitedNodesInOrder, nodesInShortestPathOrder } = dijkstra(grid, startNode, endNode));
-                        break;
-                    default:
-                        // Should not happen
-                        return;
-                }
+                const start = grid[startNode.row][startNode.col];
+                const end = grid[endNode.row][endNode.col];
+                let result;
+                if (algorithm === 'astar') result = astar(grid, start, end, allowDiagonals);
+                else if (algorithm === 'dijkstra') result = dijkstra(grid, start, end, allowDiagonals);
+                else result = bfs(grid, start, end, allowDiagonals);
                 
-                animateAlgorithm(visitedNodesInOrder, nodesInShortestPathOrder);
+                animateAlgorithm(result.visitedNodesInOrder, result.nodesInShortestPathOrder);
             };
             
-            const animateAlgorithm = (visitedNodesInOrder, nodesInShortestPathOrder) => {
-                for (let i = 0; i <= visitedNodesInOrder.length; i++) {
-                    if (i === visitedNodesInOrder.length) {
-                        setTimeout(() => {
-                            animateShortestPath(nodesInShortestPathOrder);
-                        }, 10 * i);
+            const animateAlgorithm = (visitedNodes, path) => {
+                for (let i = 0; i <= visitedNodes.length; i++) {
+                    if (i === visitedNodes.length) {
+                        setTimeout(() => animateShortestPath(path, visitedNodes.length), 10 * i);
                         return;
                     }
                     setTimeout(() => {
-                        const node = visitedNodesInOrder[i];
-                        if (document.getElementById(`node-${node.row}-${node.col}`)) {
-                            document.getElementById(`node-${node.row}-${node.col}`).className = 'node node-visited';
-                        }
+                        const node = visitedNodes[i];
+                        const el = document.getElementById(`node-${node.row}-${node.col}`);
+                        if (el && !node.isStart && !node.isEnd) el.className = 'node node-visited';
                     }, 10 * i);
                 }
             };
             
-            const animateShortestPath = (nodesInShortestPathOrder) => {
-                for (let i = 0; i < nodesInShortestPathOrder.length; i++) {
+            const animateShortestPath = (path, visitedCount) => {
+                let totalCost = "No Path";
+                if (path.length > 0) {
+                     if (algorithm === 'bfs') totalCost = path.length > 1 ? path.length - 1 : 0;
+                     else totalCost = path.reduce((sum, node) => sum + node.weight, 0) - path[0].weight;
+                }
+                
+                for (let i = 0; i < path.length; i++) {
                     setTimeout(() => {
-                        const node = nodesInShortestPathOrder[i];
-                        if (document.getElementById(`node-${node.row}-${node.col}`)) {
-                            document.getElementById(`node-${node.row}-${node.col}`).className = 'node node-path';
-                        }
+                        const node = path[i];
+                        const el = document.getElementById(`node-${node.row}-${node.col}`);
+                        if (el && !node.isStart && !node.isEnd) el.className = 'node node-path';
                     }, 50 * i);
                 }
-                setTimeout(() => setIsVisualizing(false), 50 * nodesInShortestPathOrder.length);
+                setTimeout(() => { setIsVisualizing(false); setStats({ pathCost: totalCost, visitedCount }); }, 50 * path.length);
             };
 
-            // --- BOARD CLEARING ---
             const resetGrid = () => {
-                if (isVisualizing || isGenerating) return;
-                const initialGrid = createInitialGrid();
-                setGrid(initialGrid);
-                clearAllVisualizations();
+                if (isVisualizing) return;
+                const newGrid = createInitialGrid(DEFAULT_START_NODE, DEFAULT_END_NODE);
+                setGrid(newGrid);
+                setStartNode(DEFAULT_START_NODE);
+                setEndNode(DEFAULT_END_NODE);
+                clearAllVisualizations(newGrid, true);
+            };
+            
+            const clearPath = (resetStats = true) => {
+                if (isVisualizing) return;
+                const newGrid = grid.map(row => row.map(node => ({ ...node, isVisited: false, distance: Infinity, fCost: Infinity, previousNode: null })));
+                setGrid(newGrid);
+                clearAllVisualizations(newGrid, resetStats);
             };
 
-            const clearPath = () => {
-                const newGrid = grid.map(row => row.map(node => {
-                    const newNode = {...node, 
-                        isVisited: false, 
-                        distance: Infinity, 
-                        previousNode: null,
-                    };
-                    return newNode;
-                }));
-                setGrid(newGrid);
-                clearAllVisualizations();
-            }
-
-            const clearAllVisualizations = () => {
-                 for (let row = 0; row < GRID_ROWS; row++) {
-                    for (let col = 0; col < GRID_COLS; col++) {
-                        const node = grid[row][col];
-                        if (!node.isStart && !node.isEnd && !node.isWall) {
-                             document.getElementById(`node-${row}-${col}`).className = 'node';
-                        }
+            const clearAllVisualizations = (currentGrid, resetStats) => {
+                 for (const row of currentGrid) for (const node of row) {
+                    const el = document.getElementById(`node-${node.row}-${node.col}`);
+                    if (el) {
+                        el.className = 'node';
+                        if (node.isStart) el.classList.add('node-start');
+                        else if (node.isEnd) el.classList.add('node-end');
+                        else if (node.isWall) el.classList.add('node-wall');
+                        else if (node.weight > 1) el.classList.add('node-weight');
                     }
                 }
+                if(resetStats) setStats({ pathCost: 0, visitedCount: 0 });
             }
+
+            const generateRecursiveDivisionMaze = () => {
+                if (isVisualizing) return;
+                const newGrid = createInitialGrid(startNode, endNode);
+                const addWalls = (grid, h, minX, maxX, minY, maxY) => {
+                    if (h) {
+                        if (maxX - minX < 2) return;
+                        let y = Math.floor(Math.random() * (maxY - minY)) + minY;
+                        while(y % 2 === 0 && minY !== maxY) y = Math.floor(Math.random() * (maxY - minY)) + minY;
+                        let hole = Math.floor(Math.random() * (maxX - minX)) + minX;
+                        while(hole % 2 !== 0 && minX !== maxX) hole = Math.floor(Math.random() * (maxX - minX)) + minX;
+                        for (let i = minX; i <= maxX; i++) if(i !== hole && !grid[y][i].isStart && !grid[y][i].isEnd) grid[y][i].isWall = true;
+                        addWalls(grid, !h, minX, maxX, minY, y-1);
+                        addWalls(grid, !h, minX, maxX, y+1, maxY);
+                    } else {
+                        if (maxY - minY < 2) return;
+                        let x = Math.floor(Math.random() * (maxX - minX)) + minX;
+                        while(x % 2 === 0 && minX !== maxX) x = Math.floor(Math.random() * (maxX - minX)) + minX;
+                        let hole = Math.floor(Math.random() * (maxY - minY)) + minY;
+                        while(hole % 2 !== 0 && minY !== maxY) hole = Math.floor(Math.random() * (maxY - minY)) + minY;
+                        for (let i = minY; i <= maxY; i++) if(i !== hole && !grid[i][x].isStart && !grid[i][x].isEnd) grid[i][x].isWall = true;
+                        addWalls(grid, !h, minX, x-1, minY, maxY);
+                        addWalls(grid, !h, x+1, maxX, minY, maxY);
+                    }
+                };
+                for(let i=0; i < GRID_ROWS; i++) {newGrid[i][0].isWall = true; newGrid[i][GRID_COLS-1].isWall = true;}
+                for(let i=0; i < GRID_COLS; i++) {newGrid[0][i].isWall = true; newGrid[GRID_ROWS-1][i].isWall = true;}
+                addWalls(newGrid, true, 1, GRID_COLS-2, 1, GRID_ROWS-2);
+                setGrid(newGrid);
+                clearPath();
+            };
             
-            // --- JSX RENDERING ---
             return (
                 <>
-                    <div className="header">
-                        <h1>Pathfinding Algorithm Visualizer</h1>
-                        <p>Draw walls, generate a maze with AI, and visualize the path!</p>
+                    <div className="header"><h1>Advanced Pathfinding Visualizer</h1><p>Select an algorithm, draw walls & weights, and find the shortest path!</p></div>
+                    <div className="control-bar">
+                        <div className="control-group"><label>Algorithm:</label><select onChange={(e) => setAlgorithm(e.target.value)} value={algorithm} disabled={isVisualizing}><option value="astar">A* Search</option><option value="dijkstra">Dijkstra's</option><option value="bfs">Breadth-First Search (unweighted)</option></select></div>
+                        <div className="control-group"><label>Draw:</label><button onClick={() => setDrawMode('wall')} className={`button ${drawMode === 'wall' ? 'primary' : ''}`} disabled={isVisualizing}><WallIcon /> Wall</button><button onClick={() => setDrawMode('weight')} className={`button ${drawMode === 'weight' ? 'primary' : ''}`} disabled={isVisualizing}><WeightIcon /> Weight</button></div>
+                        <div className="control-group"><label>Diagonals:</label><label className="switch"><input type="checkbox" checked={allowDiagonals} onChange={() => setAllowDiagonals(!allowDiagonals)} disabled={isVisualizing}/><span className="slider"></span></label></div>
+                        <button onClick={generateRecursiveDivisionMaze} className="button" disabled={isVisualizing}><MazeIcon/> Maze</button>
+                        <button onClick={visualizeAlgorithm} className="button primary" disabled={isVisualizing}><PlayIcon /> Visualize {algorithm.toUpperCase()}</button>
+                        <button onClick={() => clearPath()} className="button" disabled={isVisualizing}>Clear Path</button>
+                        <button onClick={resetGrid} className="button secondary-red" disabled={isVisualizing}>Reset Board</button>
                     </div>
-
-                    <div className="api-key-container">
-                        <input
-                            type="text"
-                            value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
-                            placeholder="Enter your Gemini API Key here"
-                            disabled={isGenerating || isVisualizing}
-                        />
-                        <p>
-                            To use "Generate Maze", get a free Google AI API key from 
-                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer"> Google AI Studio</a>.
-                        </p>
-                    </div>
-
-                    <div className="controls">
-                        <select onChange={(e) => setAlgorithm(e.target.value)} value={algorithm} disabled={isVisualizing || isGenerating}>
-                            <option value="bfs">Breadth-First Search</option>
-                            <option value="dfs">Depth-First Search</option>
-                            <option value="dijkstra">Dijkstra's Algorithm</option>
-                        </select>
-                        <button onClick={visualizeAlgorithm} disabled={isVisualizing || isGenerating}>
-                            {isVisualizing ? "Visualizing..." : `Visualize ${algorithm.toUpperCase()}`}
-                        </button>
-                        <button className="gemini-btn" onClick={handleGenerateMaze} disabled={isVisualizing || isGenerating || !apiKey}>
-                           {isGenerating ? "Generating..." : "✨ Generate Maze"}
-                        </button>
-                        <button className="reset-btn" onClick={resetGrid} disabled={isVisualizing || isGenerating}>
-                            Clear Board & Walls
-                        </button>
-                    </div>
-                    <div 
-                        className="grid-container" 
-                        style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 25px)` }}
-                        onMouseLeave={handleMouseUp} // Stop drawing if mouse leaves the grid
-                    >
-                        {grid.map((row, rowIndex) => (
-                            row.map((node, nodeIndex) => {
-                                const { row, col, isStart, isEnd, isWall } = node;
-                                const extraClassName = isEnd ? 'node-end' : isStart ? 'node-start' : isWall ? 'node-wall' : '';
-                                
-                                return (
-                                    <div
-                                        key={`${rowIndex}-${nodeIndex}`}
-                                        id={`node-${row}-${col}`}
-                                        className={`node ${extraClassName}`}
-                                        onMouseDown={() => handleMouseDown(row, col)}
-                                        onMouseEnter={() => handleMouseEnter(row, col)}
-                                        onMouseUp={handleMouseUp}
-                                    ></div>
-                                );
-                            })
-                        ))}
+                    <div className="main-content">
+                        <div className="grid-container" style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 25px)` }} onMouseLeave={handleMouseUp}>
+                            {grid.map((row, rIdx) => row.map((node, nIdx) => (
+                                <div key={`${rIdx}-${nIdx}`} id={`node-${node.row}-${node.col}`} className={`node ${node.isEnd ? 'node-end' : node.isStart ? 'node-start' : node.isWall ? 'node-wall' : node.weight > 1 ? 'node-weight' : ''}`} onMouseDown={() => handleMouseDown(node.row, node.col)} onMouseEnter={() => handleMouseEnter(node.row, node.col)} onMouseUp={handleMouseUp}>
+                                    {node.weight > 1 && !node.isStart && !node.isEnd && <svg viewBox="0 0 100 100"><path d="M50 85L20 25h60z" /></svg>}
+                                </div>
+                            )))}
+                        </div>
+                        <div className="right-sidebar" style={{opacity: isVisualizing || stats.visitedCount > 0 ? 1 : 0}}>
+                            <div className="stat"><div className="stat-value">{stats.pathCost}</div><div className="stat-label">Path Cost</div></div>
+                            <div className="stat"><div className="stat-value">{stats.visitedCount}</div><div className="stat-label">Visited Nodes</div></div>
+                        </div>
                     </div>
                 </>
             );
         };
         
-        // --- ALGORITHMS ---
-        function bfs(grid, startNode, endNode) {
-            const visitedNodesInOrder = [];
-            const queue = [startNode];
-            startNode.isVisited = true;
-
+        // --- ALGORITHMS & HELPERS ---
+        function getNeighbors(node, grid, allowDiagonals) {
+            const neighbors = []; const { col, row } = node; const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]]; if (allowDiagonals) dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+            for (const [dr, dc] of dirs) { const r = row + dr; const c = col + dc; if (r >= 0 && r < grid.length && c >= 0 && c < grid[0].length) neighbors.push(grid[r][c]); }
+            return neighbors.filter(n => !n.isWall);
+        }
+        function heuristic(nodeA, nodeB) { return Math.abs(nodeA.row - nodeB.row) + Math.abs(nodeA.col - nodeB.col); }
+        function reconstructPath(endNode) { const path = []; let current = endNode; while (current !== null) { path.unshift(current); current = current.previousNode; } return path; }
+        function astar(grid, startNode, endNode, allowDiagonals) {
+            const openSet = [startNode]; const visited = []; startNode.distance = 0; startNode.fCost = heuristic(startNode, endNode);
+            while (openSet.length > 0) {
+                openSet.sort((a, b) => a.fCost - b.fCost); const current = openSet.shift();
+                if (current.isVisited) continue;
+                visited.push(current); current.isVisited = true;
+                if (current === endNode) return { visitedNodesInOrder: visited, nodesInShortestPathOrder: reconstructPath(endNode) };
+                for (const neighbor of getNeighbors(current, grid, allowDiagonals)) {
+                    if (neighbor.isVisited) continue;
+                    const tentativeDist = current.distance + neighbor.weight;
+                    if (tentativeDist < neighbor.distance) {
+                        neighbor.previousNode = current; neighbor.distance = tentativeDist; neighbor.fCost = tentativeDist + heuristic(neighbor, endNode);
+                        if (!openSet.some(n => n === neighbor)) openSet.push(neighbor);
+                    }
+                }
+            } return { visitedNodesInOrder: visited, nodesInShortestPathOrder: [] };
+        }
+        function dijkstra(grid, startNode, endNode, allowDiagonals) {
+            const unvisited = grid.flat(); const visited = []; startNode.distance = 0;
+            while (unvisited.length > 0) {
+                unvisited.sort((a, b) => a.distance - b.distance); const closest = unvisited.shift();
+                if (closest.isWall || closest.distance === Infinity) continue;
+                visited.push(closest); closest.isVisited = true;
+                if (closest === endNode) return { visitedNodesInOrder: visited, nodesInShortestPathOrder: reconstructPath(endNode) };
+                for (const neighbor of getNeighbors(closest, grid, allowDiagonals)) {
+                    if(!neighbor.isVisited) {
+                        const newDist = closest.distance + neighbor.weight;
+                        if (newDist < neighbor.distance) { neighbor.distance = newDist; neighbor.previousNode = closest; }
+                    }
+                }
+            } return { visitedNodesInOrder: visited, nodesInShortestPathOrder: [] };
+        }
+        function bfs(grid, startNode, endNode, allowDiagonals) {
+            const queue = [startNode]; const visited = []; startNode.isVisited = true;
             while (queue.length > 0) {
-                const currentNode = queue.shift();
-                
-                visitedNodesInOrder.push(currentNode);
-                
-                if (currentNode === endNode) {
-                    const nodesInShortestPathOrder = getNodesInShortestPathOrder(endNode);
-                    return { visitedNodesInOrder, nodesInShortestPathOrder };
+                const current = queue.shift(); visited.push(current);
+                if (current === endNode) return { visitedNodesInOrder: visited, nodesInShortestPathOrder: reconstructPath(endNode) };
+                for (const neighbor of getNeighbors(current, grid, allowDiagonals)) {
+                    if (!neighbor.isVisited) { neighbor.isVisited = true; neighbor.previousNode = current; queue.push(neighbor); }
                 }
-
-                const neighbors = getUnvisitedNeighbors(currentNode, grid);
-                for (const neighbor of neighbors) {
-                    neighbor.isVisited = true;
-                    neighbor.previousNode = currentNode;
-                    queue.push(neighbor);
-                }
-            }
-            
-            return { visitedNodesInOrder, nodesInShortestPathOrder: [] };
+            } return { visitedNodesInOrder: visited, nodesInShortestPathOrder: [] };
         }
 
-        function dfs(grid, startNode, endNode) {
-            const visitedNodesInOrder = [];
-            const stack = [startNode];
-
-            while (stack.length > 0) {
-                const currentNode = stack.pop();
-
-                if (currentNode.isVisited || currentNode.isWall) continue;
-
-                currentNode.isVisited = true;
-                visitedNodesInOrder.push(currentNode);
-
-                if (currentNode === endNode) {
-                    return {
-                        visitedNodesInOrder,
-                        nodesInShortestPathOrder: getNodesInShortestPathOrder(endNode),
-                    };
-                }
-                
-                const neighbors = getNeighborsForTraversal(currentNode, grid).reverse();
-                for (const neighbor of neighbors) {
-                    neighbor.previousNode = currentNode;
-                    stack.push(neighbor);
-                }
-            }
-            return { visitedNodesInOrder, nodesInShortestPathOrder: [] };
-        }
-
-        function dijkstra(grid, startNode, endNode) {
-            const visitedNodesInOrder = [];
-            startNode.distance = 0;
-            const unvisitedNodes = getAllNodes(grid);
-
-            while (!!unvisitedNodes.length) {
-                sortNodesByDistance(unvisitedNodes);
-                const closestNode = unvisitedNodes.shift();
-
-                if (closestNode.isWall) continue;
-
-                if (closestNode.distance === Infinity) {
-                    const nodesInShortestPathOrder = getNodesInShortestPathOrder(endNode);
-                    return { visitedNodesInOrder, nodesInShortestPathOrder };
-                }
-
-                closestNode.isVisited = true;
-                visitedNodesInOrder.push(closestNode);
-
-                if (closestNode === endNode) {
-                    const nodesInShortestPathOrder = getNodesInShortestPathOrder(endNode);
-                    return { visitedNodesInOrder, nodesInShortestPathOrder };
-                }
-                
-                updateUnvisitedNeighbors(closestNode, grid);
-            }
-        }
-        
-        function sortNodesByDistance(unvisitedNodes) {
-            unvisitedNodes.sort((nodeA, nodeB) => nodeA.distance - nodeB.distance);
-        }
-        
-        function updateUnvisitedNeighbors(node, grid) {
-            const unvisitedNeighbors = getUnvisitedNeighbors(node, grid);
-            for (const neighbor of unvisitedNeighbors) {
-                neighbor.distance = node.distance + 1;
-                neighbor.previousNode = node;
-            }
-        }
-        
-        function getAllNodes(grid) {
-            const nodes = [];
-            for (const row of grid) {
-                for (const node of row) {
-                    nodes.push(node);
-                }
-            }
-            return nodes;
-        }
-
-        function getNeighborsForTraversal(node, grid) {
-            const neighbors = [];
-            const { col, row } = node;
-            if (row > 0) neighbors.push(grid[row - 1][col]);
-            if (col < grid[0].length - 1) neighbors.push(grid[row][col + 1]);
-            if (row < grid.length - 1) neighbors.push(grid[row + 1][col]);
-            if (col > 0) neighbors.push(grid[row][col - 1]);
-            return neighbors;
-        }
-
-
-        function getUnvisitedNeighbors(node, grid) {
-            const allNeighbors = getNeighborsForTraversal(node, grid);
-            return allNeighbors.filter(neighbor => !neighbor.isVisited && !neighbor.isWall);
-        }
-        
-        function getNodesInShortestPathOrder(endNode) {
-            const nodesInShortestPathOrder = [];
-            let currentNode = endNode;
-            while (currentNode !== null) {
-                nodesInShortestPathOrder.unshift(currentNode);
-                currentNode = currentNode.previousNode;
-            }
-            return nodesInShortestPathOrder;
-        }
-
-
-        // --- RENDER THE APP ---
         const container = document.getElementById('root');
         const root = ReactDOM.createRoot(container);
         root.render(<App />);
-
     </script>
 </body>
 </html>
-
